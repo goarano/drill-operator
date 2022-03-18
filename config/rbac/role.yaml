@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - zookeepers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - zookeepers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - zookeepers/status
+  verbs:
+  - get
+  - patch
+  - update
