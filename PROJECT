@@ -1,0 +1,9 @@
+domain: goarano.io
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: drill-operator
+repo: github.com/goarano/drill-operator
+version: "3"
