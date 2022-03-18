@@ -48,6 +48,7 @@ endif
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
+IMG_LATEST ?= $(IMAGE_TAG_BASE):latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
 
@@ -146,6 +147,16 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+#TODO: remove before any actual release
+.PHONY: dev
+dev: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	docker build -t ${IMG_LATEST} .
+	docker push ${IMG_LATEST}
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG_LATEST}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	kubectl apply -f config/samples/apache_v1alpha1_zookeeper.yaml
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 .PHONY: controller-gen
