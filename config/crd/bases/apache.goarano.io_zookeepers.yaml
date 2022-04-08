@@ -35,10 +35,30 @@ spec:
           spec:
             description: ZookeeperSpec defines the desired state of Zookeeper
             properties:
+              debug:
+                description: Debug options for Zookeeper
+                properties:
+                  level:
+                    default: INFO
+                    type: string
+                  singleNode:
+                    default: false
+                    type: boolean
+                type: object
               foo:
                 description: Foo is an example field of Zookeeper. Edit zookeeper_types.go
                   to remove/update
                 type: string
+              replicas:
+                description: Number of Replicas to be deployed.
+                format: int32
+                type: integer
+              version:
+                default: 1.0-3.4.10
+                description: Version of Zookeeper.
+                type: string
+            required:
+            - replicas
             type: object
           status:
             description: ZookeeperStatus defines the observed state of Zookeeper

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -79,7 +80,6 @@ func (r *ZookeeperReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	res, err := r.reconcileServices(ctx, req, zookeeper)
 	if !res.IsZero() || err != nil {
-		log.Info("I should not be here")
 		return res, err
 	}
 
@@ -113,7 +113,6 @@ func (r *ZookeeperReconciler) reconcileServices(ctx context.Context, req ctrl.Re
 	}
 
 	if !equality.Semantic.DeepDerivative(hsService.Spec, found.Spec) {
-		log.Info("DeepDerivative", "hs.s", hsService.Spec, "f.s", found.Spec)
 		found.Spec = hsService.Spec
 		err = r.Update(ctx, found)
 		if err != nil {
@@ -188,6 +187,25 @@ func (r *ZookeeperReconciler) reconcileStatefulSet(ctx context.Context, req ctrl
 	return ctrl.Result{}, nil
 }
 
+func (r *ZookeeperReconciler) zookeeperLabels(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
+	return map[string]string{
+		"app":                          "zookeeper",
+		"app.kubernetes.io/component":  "zookeeper",
+		"app.kubernetes.io/instance":   zookeeper.Name,
+		"app.kubernetes.io/managed-by": "drill-operator",
+		"app.kubernetes.io/name":       "zookeeper",
+		//"app.kubernetes.io/part-of": "TODO",
+		"app.kubernetes.io/version": zookeeper.Spec.Version,
+	}
+}
+
+func (r *ZookeeperReconciler) zookeeperLabelsSelector(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
+	return map[string]string{
+		"app":                        "zookeeper",
+		"app.kubernetes.io/instance": zookeeper.Name,
+	}
+}
+
 func (r *ZookeeperReconciler) serviceHs(zookeeper *apachev1alpha1.Zookeeper) *corev1.Service {
 	nn := types.NamespacedName{Name: strings.Join([]string{zookeeper.ObjectMeta.Name, "hs"}, "-"), Namespace: zookeeper.Namespace}
 	service := &corev1.Service{
@@ -198,7 +216,7 @@ func (r *ZookeeperReconciler) serviceHs(zookeeper *apachev1alpha1.Zookeeper) *co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
-			Labels:    map[string]string{"app": "zk"},
+			Labels:    r.zookeeperLabels(zookeeper),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -213,7 +231,7 @@ func (r *ZookeeperReconciler) serviceHs(zookeeper *apachev1alpha1.Zookeeper) *co
 					TargetPort: intstr.FromInt(3888),
 				},
 			},
-			Selector:  map[string]string{"app": "zk"},
+			Selector:  r.zookeeperLabelsSelector(zookeeper),
 			ClusterIP: "None",
 		},
 	}
@@ -231,7 +249,7 @@ func (r *ZookeeperReconciler) serviceCs(zookeeper *apachev1alpha1.Zookeeper) *co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
-			Labels:    map[string]string{"app": "zk"},
+			Labels:    r.zookeeperLabels(zookeeper),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -241,7 +259,7 @@ func (r *ZookeeperReconciler) serviceCs(zookeeper *apachev1alpha1.Zookeeper) *co
 					TargetPort: intstr.FromInt(2181),
 				},
 			},
-			Selector: map[string]string{"app": "zk"},
+			Selector: r.zookeeperLabelsSelector(zookeeper),
 		},
 	}
 	ctrl.SetControllerReference(zookeeper, service, r.Scheme)
@@ -250,8 +268,10 @@ func (r *ZookeeperReconciler) serviceCs(zookeeper *apachev1alpha1.Zookeeper) *co
 
 func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *appsv1.StatefulSet {
 	nn := types.NamespacedName{Name: zookeeper.Name, Namespace: zookeeper.Namespace}
-	var replicas int32 = 3
 	var uid int64 = 1000
+	var replicas int32 = zookeeper.Spec.Replicas
+	var version string = zookeeper.Spec.Version
+
 	set := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StatefulSet",
@@ -260,24 +280,41 @@ func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
+			Labels:    r.zookeeperLabels(zookeeper),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{
-				"app": "zk",
-			},
-			},
+			Selector: &metav1.LabelSelector{MatchLabels: r.zookeeperLabelsSelector(zookeeper)},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "zk"}},
+				ObjectMeta: metav1.ObjectMeta{Labels: r.zookeeperLabels(zookeeper)},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
 							Name:  "kubernetes-zookeeper",
-							Image: "k8s.gcr.io/kubernetes-zookeeper:1.0-3.4.10",
+							Image: strings.Join([]string{"k8s.gcr.io/kubernetes-zookeeper", version}, ":"),
 							Command: []string{
 								"sh",
 								"-c",
-								"start-zookeeper --servers=3 --data_dir=/var/lib/zookeeper/data --data_log_dir=/var/lib/zookeeper/data/log --conf_dir=/opt/zookeeper/conf --client_port=2181 --election_port=3888 --server_port=2888 --tick_time=2000 --init_limit=10 --sync_limit=5 --heap=512M --max_client_cnxns=60 --snap_retain_count=3 --purge_interval=12 --max_session_timeout=40000 --min_session_timeout=4000 --log_level=INFO",
+								strings.Join([]string{
+									"start-zookeeper",
+									fmt.Sprintf("--servers=%d", replicas),
+									"--data_dir=/var/lib/zookeeper/data",
+									"--data_log_dir=/var/lib/zookeeper/data/log",
+									"--conf_dir=/opt/zookeeper/conf",
+									"--client_port=2181",
+									"--election_port=3888",
+									"--server_port=2888",
+									"--tick_time=2000",
+									"--init_limit=10",
+									"--sync_limit=5",
+									"--heap=512M",
+									"--max_client_cnxns=60",
+									"--snap_retain_count=3",
+									"--purge_interval=12",
+									"--max_session_timeout=40000",
+									"--min_session_timeout=4000",
+									fmt.Sprintf("--log_level=%s", zookeeper.Spec.Debug.LogLevel),
+								}, " "),
 							},
 							Ports: []corev1.ContainerPort{
 								{
@@ -326,21 +363,6 @@ func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *
 						RunAsUser: &uid,
 						FSGroup:   &uid,
 					},
-					Affinity: &corev1.Affinity{PodAntiAffinity: &corev1.PodAntiAffinity{RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-						{
-							LabelSelector: &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{
-								{
-									Key:      "app",
-									Operator: metav1.LabelSelectorOperator("In"),
-									Values: []string{
-										"zk",
-									},
-								},
-							}},
-							TopologyKey: "kubernetes.io/hostname",
-						},
-					}},
-					},
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -356,11 +378,32 @@ func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *
 					},
 				},
 			},
-			ServiceName:         "zk-hs",
+			ServiceName:         r.serviceHs(zookeeper).Name,
 			PodManagementPolicy: appsv1.PodManagementPolicyType("OrderedReady"),
 			UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.StatefulSetUpdateStrategyType("RollingUpdate")},
 		},
 	}
+
+	multiNodeAffinity := &corev1.Affinity{PodAntiAffinity: &corev1.PodAntiAffinity{RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+		{
+			LabelSelector: &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      "app",
+					Operator: metav1.LabelSelectorOperator("In"),
+					Values: []string{
+						"zk",
+					},
+				},
+			}},
+			TopologyKey: "kubernetes.io/hostname",
+		},
+	}},
+	}
+
+	if !zookeeper.Spec.Debug.SingleNode {
+		set.Spec.Template.Spec.Affinity = multiNodeAffinity
+	}
+
 	ctrl.SetControllerReference(zookeeper, set, r.Scheme)
 	return set
 }

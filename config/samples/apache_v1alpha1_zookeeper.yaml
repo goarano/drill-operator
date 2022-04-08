@@ -3,4 +3,7 @@ kind: Zookeeper
 metadata:
   name: zookeeper-sample
 spec:
-  # TODO(user): Add fields here
+  replicas: 2
+  debug:
+    logLevel: TRACE
+    singleNode: true
