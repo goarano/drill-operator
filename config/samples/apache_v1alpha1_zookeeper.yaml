@@ -5,5 +5,5 @@ metadata:
 spec:
   replicas: 3
   debug:
-    logLevel: TRACE
+    logLevel: DEBUG
     singleNode: true

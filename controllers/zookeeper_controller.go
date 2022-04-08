@@ -183,7 +183,7 @@ func (r *ZookeeperReconciler) reconcileStatefulSet(ctx context.Context, req ctrl
 	return ctrl.Result{}, nil
 }
 
-func (r *ZookeeperReconciler) zookeeperLabels(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
+func (r *ZookeeperReconciler) labels(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
 	return map[string]string{
 		"app":                          "zookeeper",
 		"app.kubernetes.io/component":  "zookeeper",
@@ -195,10 +195,11 @@ func (r *ZookeeperReconciler) zookeeperLabels(zookeeper *apachev1alpha1.Zookeepe
 	}
 }
 
-func (r *ZookeeperReconciler) zookeeperLabelsSelector(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
+func (r *ZookeeperReconciler) labelsSelector(zookeeper *apachev1alpha1.Zookeeper) map[string]string {
 	return map[string]string{
-		"app":                        "zookeeper",
-		"app.kubernetes.io/instance": zookeeper.Name,
+		"app.kubernetes.io/managed-by": "drill-operator",
+		"app.kubernetes.io/component":  "zookeeper",
+		"app.kubernetes.io/instance":   zookeeper.Name,
 	}
 }
 
@@ -212,7 +213,7 @@ func (r *ZookeeperReconciler) serviceHs(zookeeper *apachev1alpha1.Zookeeper) *co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
-			Labels:    r.zookeeperLabels(zookeeper),
+			Labels:    r.labels(zookeeper),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -227,7 +228,7 @@ func (r *ZookeeperReconciler) serviceHs(zookeeper *apachev1alpha1.Zookeeper) *co
 					TargetPort: intstr.FromInt(3888),
 				},
 			},
-			Selector:  r.zookeeperLabelsSelector(zookeeper),
+			Selector:  r.labelsSelector(zookeeper),
 			ClusterIP: "None",
 		},
 	}
@@ -245,7 +246,7 @@ func (r *ZookeeperReconciler) serviceCs(zookeeper *apachev1alpha1.Zookeeper) *co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
-			Labels:    r.zookeeperLabels(zookeeper),
+			Labels:    r.labels(zookeeper),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -255,7 +256,7 @@ func (r *ZookeeperReconciler) serviceCs(zookeeper *apachev1alpha1.Zookeeper) *co
 					TargetPort: intstr.FromInt(2181),
 				},
 			},
-			Selector: r.zookeeperLabelsSelector(zookeeper),
+			Selector: r.labelsSelector(zookeeper),
 		},
 	}
 	ctrl.SetControllerReference(zookeeper, service, r.Scheme)
@@ -276,13 +277,13 @@ func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      nn.Name,
 			Namespace: nn.Namespace,
-			Labels:    r.zookeeperLabels(zookeeper),
+			Labels:    r.labels(zookeeper),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: r.zookeeperLabelsSelector(zookeeper)},
+			Selector: &metav1.LabelSelector{MatchLabels: r.labelsSelector(zookeeper)},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: r.zookeeperLabels(zookeeper)},
+				ObjectMeta: metav1.ObjectMeta{Labels: r.labels(zookeeper)},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -384,11 +385,19 @@ func (r *ZookeeperReconciler) statefulSet(zookeeper *apachev1alpha1.Zookeeper) *
 		{
 			LabelSelector: &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{
 				{
-					Key:      "app",
+					Key:      "app.kubernetes.io/managed-by",
 					Operator: metav1.LabelSelectorOperator("In"),
-					Values: []string{
-						"zk",
-					},
+					Values:   []string{"drill-operator"},
+				},
+				{
+					Key:      "app.kubernetes.io/component",
+					Operator: metav1.LabelSelectorOperator("In"),
+					Values:   []string{"zookeeper"},
+				},
+				{
+					Key:      "app.kubernetes.io/instance",
+					Operator: metav1.LabelSelectorOperator("In"),
+					Values:   []string{zookeeper.Name},
 				},
 			}},
 			TopologyKey: "kubernetes.io/hostname",

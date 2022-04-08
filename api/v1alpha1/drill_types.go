@@ -28,8 +28,12 @@ type DrillSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Drill. Edit drill_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Number of Replicas to be deployed.
+	Replicas int32 `json:"replicas"`
+	// Version of Drill.
+	// +kubebuilder:default:="1.20.0"
+	Version string `json:"version,omitempty"`
+	Debug   Debug  `json:"debug,omitempty"`
 }
 
 // DrillStatus defines the observed state of Drill

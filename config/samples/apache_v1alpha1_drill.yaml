@@ -3,4 +3,7 @@ kind: Drill
 metadata:
   name: drill-sample
 spec:
-  # TODO(user): Add fields here
+  replicas: 2
+  debug:
+    logLevel: DEBUG
+    singleNode: true

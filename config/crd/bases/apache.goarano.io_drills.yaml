@@ -35,10 +35,33 @@ spec:
           spec:
             description: DrillSpec defines the desired state of Drill
             properties:
-              foo:
-                description: Foo is an example field of Drill. Edit drill_types.go
-                  to remove/update
+              debug:
+                description: Debug options for Zookeeper
+                properties:
+                  logLevel:
+                    default: INFO
+                    enum:
+                    - "OFF"
+                    - FATAL
+                    - ERROR
+                    - WARN
+                    - INFO
+                    - DEBUG
+                    type: string
+                  singleNode:
+                    default: false
+                    type: boolean
+                type: object
+              replicas:
+                description: Number of Replicas to be deployed.
+                format: int32
+                type: integer
+              version:
+                default: 1.20.0
+                description: Version of Drill.
                 type: string
+            required:
+            - replicas
             type: object
           status:
             description: DrillStatus defines the observed state of Drill
