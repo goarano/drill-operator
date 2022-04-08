@@ -38,8 +38,15 @@ spec:
               debug:
                 description: Debug options for Zookeeper
                 properties:
-                  level:
+                  logLevel:
                     default: INFO
+                    enum:
+                    - "OFF"
+                    - FATAL
+                    - ERROR
+                    - WARN
+                    - INFO
+                    - DEBUG
                     type: string
                   singleNode:
                     default: false
@@ -50,7 +57,8 @@ spec:
                   to remove/update
                 type: string
               replicas:
-                description: Number of Replicas to be deployed.
+                description: 'Number of Replicas to be deployed. TODO: prevent changes
+                  (via webhook)'
                 format: int32
                 type: integer
               version:

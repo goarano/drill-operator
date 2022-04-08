@@ -31,6 +31,7 @@ type ZookeeperSpec struct {
 	// Foo is an example field of Zookeeper. Edit zookeeper_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
 	// Number of Replicas to be deployed.
+	// TODO: prevent changes (via webhook)
 	Replicas int32 `json:"replicas"`
 	// Version of Zookeeper.
 	// +kubebuilder:default:="1.0-3.4.10"
@@ -41,7 +42,8 @@ type ZookeeperSpec struct {
 // Debug options for Zookeeper
 type Debug struct {
 	// +kubebuilder:default:="INFO"
-	LogLevel string `json:"level,omitempty"`
+	// +kubebuilder:validation:Enum:=OFF;FATAL;ERROR;WARN;INFO;DEBUG
+	LogLevel string `json:"logLevel,omitempty"`
 	// +kubebuilder:default:=false
 	SingleNode bool `json:"singleNode,omitempty"`
 }
