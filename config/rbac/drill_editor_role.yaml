@@ -1,0 +1,24 @@
+# permissions for end users to edit drills.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: drill-editor-role
+rules:
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - drills
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - drills/status
+  verbs:
+  - get

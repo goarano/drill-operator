@@ -1,0 +1,6 @@
+apiVersion: apache.goarano.io/v1alpha1
+kind: Drill
+metadata:
+  name: drill-sample
+spec:
+  # TODO(user): Add fields here

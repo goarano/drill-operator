@@ -8,6 +8,32 @@ rules:
 - apiGroups:
   - apache.goarano.io
   resources:
+  - drills
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - drills/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apache.goarano.io
+  resources:
+  - drills/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apache.goarano.io
+  resources:
   - zookeepers
   verbs:
   - create
