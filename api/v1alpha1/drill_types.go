@@ -32,8 +32,9 @@ type DrillSpec struct {
 	Replicas int32 `json:"replicas"`
 	// Version of Drill.
 	// +kubebuilder:default:="1.20.0"
-	Version string `json:"version,omitempty"`
-	Debug   Debug  `json:"debug,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Zookeeper string `json:"zookeeper"`
+	Debug     Debug  `json:"debug,omitempty"`
 }
 
 // DrillStatus defines the observed state of Drill

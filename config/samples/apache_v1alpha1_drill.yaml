@@ -4,6 +4,7 @@ metadata:
   name: drill-sample
 spec:
   replicas: 2
+  zookeeper: zookeeper-sample
   debug:
     logLevel: DEBUG
     singleNode: true

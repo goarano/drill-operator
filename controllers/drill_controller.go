@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -290,6 +291,36 @@ func (r *DrillReconciler) statefulSet(drill *apachev1alpha1.Drill) *appsv1.State
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: r.labels(drill)},
 				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name:  "drill-override",
+							Image: "ubuntu", // TODO replace
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "override",
+									MountPath: "/opt/drill/conf",
+								},
+							},
+							Command: []string{
+								"bash",
+								"-c",
+								strings.Join([]string{
+									"echo",
+									"'",
+									fmt.Sprintf(
+										strings.Join([]string{
+											"drill.exec: {",
+											"	cluster-id: \"mydrillcluster\"",
+											"	zk.connect: \"%s-cs:2181\"", //TODO use individual servers?
+											"}",
+										}, "\n"), drill.Spec.Zookeeper),
+									"'",
+									">",
+									"/opt/drill/conf/drill-override.conf",
+								}, " "),
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:  "drill",
@@ -304,15 +335,34 @@ func (r *DrillReconciler) statefulSet(drill *apachev1alpha1.Drill) *appsv1.State
 									ContainerPort: 31010,
 								},
 							},
+							Command: []string{
+								"bash",
+								"-c",
+								strings.Join([]string{
+									"cp -f /opt/drill/conf-override/drill-override.conf /opt/drill/conf/",
+									"/opt/drill/bin/drillbit.sh start", // TODO
+									"while true; do sleep 5; done",
+								}, "; "),
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "datadir",
 									MountPath: "/data",
 								},
+								{
+									Name:      "override",
+									MountPath: "/opt/drill/conf-override",
+								},
 							},
 							ImagePullPolicy: corev1.PullPolicy("Always"),
 						},
 					},
+					Volumes: []corev1.Volume{{
+						Name: "override",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					}},
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
